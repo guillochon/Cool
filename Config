@@ -1,0 +1,13 @@
+# Config file for the cool module
+# [/source/physics/sourceTerms/Cool]
+
+# includes the following subdirectories
+#  CoolMain -- holds the routines for Cool
+#  CoolNSE -- nuclear statistical equilibrium tables
+
+DEFAULT CoolMain
+
+D useCool        shall I cool?  
+PARAMETER useCool       BOOLEAN FALSE  #placed here so that if any other unit wants to switch some code based upon this unit, it can do so.
+
+
