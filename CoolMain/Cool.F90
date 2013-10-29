@@ -33,6 +33,7 @@ subroutine Cool(blockCount,blockList,dt, time)
        Grid_getBlkIndexLimits, Grid_getBlkPtr, &
        Grid_releaseBlkPtr
   use Eos_interface, ONLY : Eos_wrapped
+  use Grid_data, ONLY : gr_smalle
   use Multispecies_interface, ONLY : Multispecies_getSumInv
   use PhysicalConstants_interface, ONLY: PhysicalConstants_get
   use Simulation_data, ONLY : sim_smallT
@@ -98,8 +99,8 @@ subroutine Cool(blockCount,blockList,dt, time)
                    solnData(VELZ_VAR,i,j,k)**2)
 
               ! internal energy, add on nuclear rate*timestep
-              ei = solnData(ENER_VAR,i,j,k) - ek
-              ei = ei - dt*sdot
+              !ei = solnData(ENER_VAR,i,j,k) - ek
+              ei = max(solnData(EINT_VAR,i,j,k) - dt*sdot, gr_smalle)
                 
 #ifdef EINT_VAR
               solnData(EINT_VAR,i,j,k) = ei

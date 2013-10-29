@@ -1,0 +1,4 @@
+# Config file for the cool module
+# [/source/physics/sourceTerms/Cool/CoolMain]
+
+VARIABLE ecoo
