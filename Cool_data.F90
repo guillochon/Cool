@@ -25,6 +25,8 @@
 Module Cool_data
   implicit none
 
-  logical, save :: cool_useCool  
+  logical, save :: cool_useCool
+  integer, save :: cool_meshMe
+  real, save    :: cool_coolDtFactor
 
 end Module Cool_data

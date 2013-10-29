@@ -23,10 +23,17 @@
 subroutine Cool_init()
   use Cool_data
   use RuntimeParameters_interface, ONLY : RuntimeParameters_get
+  use Driver_interface, ONLY : Driver_getMype
 
   implicit none
 
+#include "constants.h"
+#include "Flash.h"
+
   call RuntimeParameters_get("useCool", cool_useCool)
+  call RuntimeParameters_get("coolDtFactor", cool_coolDtFactor)
+
+  call Driver_getMype(MESH_COMM, cool_meshMe)
 
   if (.not. cool_useCool) then
      write(6,*)'WARNING:  You have included the Cool unit but have set '
