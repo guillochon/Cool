@@ -37,7 +37,7 @@ subroutine Cool(blockCount,blockList,dt, time)
   use Multispecies_interface, ONLY : Multispecies_getSumInv
   use PhysicalConstants_interface, ONLY: PhysicalConstants_get
   use Simulation_data, ONLY : sim_smallT, sim_xCenter, sim_yCenter, sim_zCenter, &
-                              sim_ptMass, sim_tAmbient, obj_mu
+                              sim_ptMass, sim_tAmbient, obj_mu, sim_condCoeff
   use RuntimeParameters_interface, ONLY : RuntimeParameters_get
   use Cool_data, ONLY : cool_useCool
 
@@ -127,8 +127,8 @@ subroutine Cool(blockCount,blockList,dt, time)
 
               ! Simple radial conduction, saturated value from Cowie & McKee assuming an effective area ~ r.
               Tback = max (T0*(dist/rsc)**(-1.d0), sim_tAmbient)
-              if (temp .lt. 0.1d0*Tback .and. dist .gt. softening_radius) then
-                  sdot = sdot + 0.1d0*0.4d0*sqrt(2.d0*kb*Tback/PI/me)*kb*Tback/mp/dist
+              if (temp .lt. 0.5d0*Tback .and. dist .gt. softening_radius) then
+                  sdot = sdot + sim_condCoeff*0.4d0*sqrt(2.d0*kb*Tback/PI/me)*kb*Tback/mp/dist
               endif
 
               ! kinetic energy

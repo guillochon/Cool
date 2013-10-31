@@ -36,6 +36,8 @@ subroutine Cool_computeDt (blockID, &
                               dt_cool, dt_minloc )
   use cool_data, ONLY: cool_coolDtFactor, cool_usecool, cool_meshMe
   use Driver_interface, ONLY : Driver_abortFlash
+  use Simulation_data, ONLY : obj_gamc, obj_mu, sim_tAmbient
+  use Eos_data, ONLY : eos_gasConstant
   implicit none
 
 #include "constants.h"
@@ -49,7 +51,7 @@ subroutine Cool_computeDt (blockID, &
   integer, intent(INOUT)  :: dt_minloc(5)
 
   !! local variables
-  real              :: dt_temp, dt_tempInv
+  real              :: dt_temp, dt_tempInv, min_ei
   integer           :: temploc(5)
   integer           :: i, j, k
 
@@ -64,6 +66,7 @@ subroutine Cool_computeDt (blockID, &
 
   dt_temp = HUGE(0.0)
   dt_tempInv = SMALL
+  min_ei = eos_gasConstant*sim_tAmbient/((obj_gamc-1.e0)*obj_mu)
 
   ! loop over all of the zones and compute the minimum eint/enuc
   do k = blkLimits(LOW,KAXIS), blkLimits(HIGH,KAXIS)
@@ -79,6 +82,8 @@ subroutine Cool_computeDt (blockID, &
                 solnData(VELY_VAR,i,j,k)**2 + &
                 solnData(VELZ_VAR,i,j,k)**2)
 #endif
+           
+           eint_zone = max(eint_zone, min_ei)
 
            ! compute the ratio.  Note, it is the absolute value that matters.
            ! Also prevent a divide by zero by first computing and comparing
