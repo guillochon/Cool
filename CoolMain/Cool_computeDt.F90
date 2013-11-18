@@ -38,6 +38,7 @@ subroutine Cool_computeDt (blockID, &
   use Driver_interface, ONLY : Driver_abortFlash
   use Simulation_data, ONLY : obj_gamc, obj_mu, sim_tAmbient
   use Eos_data, ONLY : eos_gasConstant
+  use Driver_data, ONLY: dr_dt
   implicit none
 
 #include "constants.h"
@@ -83,24 +84,21 @@ subroutine Cool_computeDt (blockID, &
                 solnData(VELZ_VAR,i,j,k)**2)
 #endif
            
-           eint_zone = max(eint_zone, min_ei)
-
            ! compute the ratio.  Note, it is the absolute value that matters.
            ! Also prevent a divide by zero by first computing and comparing
            ! the inverse of what we want, and then only (un)invert that inverse
            ! if it is a reasonable number.
-           energyRatioInv = abs(solnData(ECOO_VAR,i,j,k)) / eint_zone
+           energyRatioInv = abs(solnData(ECOO_VAR,i,j,k) + solnData(EHEA_VAR,i,j,k)) / eint_zone
 
            if (energyRatioInv > dt_tempInv) then
-              dt_tempInv = energyRatioInv
-              dt_temp = 1.0 / energyRatioInv
-              temploc(1) = i
-              temploc(2) = j
-              temploc(3) = k
-              temploc(4) = blockID
-              temploc(5) = cool_meshMe
+               dt_tempInv = energyRatioInv
+               dt_temp = 1.0 / energyRatioInv
+               temploc(1) = i
+               temploc(2) = j
+               temploc(3) = k
+               temploc(4) = blockID
+               temploc(5) = cool_meshMe
            endif
-
         enddo
      enddo
   enddo

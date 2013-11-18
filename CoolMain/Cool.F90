@@ -54,7 +54,7 @@ subroutine Cool(blockCount,blockList,dt, time)
 
   integer :: thisBlock, blockID, i, j, k, sizeX, sizeY, sizeZ, istat
   logical :: cooledZone
-  real :: sdot, sgamma, ek, ei, rho, mp, me, abar, xx, yy, zz, dist
+  real :: sdotc, sdoth, sgamma, ek, ei, rho, mp, me, abar, xx, yy, zz, dist
   real :: rsc, T0, Tback, temp, kb, newton, softening_radius
   real, pointer, dimension(:,:,:,:)            :: solnData
   integer, dimension(2,MDIM) :: blkLimits, blkLimitsGC
@@ -123,12 +123,19 @@ subroutine Cool(blockCount,blockList,dt, time)
               call Multispecies_getSumInv(A, abar, xn)
               abar = 1.d0 / abar
 
-              sdot = -sgamma*rho/(abar*mp)**2
+              ! Just constant
+              !sdotc = -sgamma*rho/(abar*mp)**2
+
+              ! Eyeball fit to Dopita and Sutherland
+              !sdotc = -(1.d-21*exp(-0.5d0*((log10(temp) - 5.d0)/0.33d0)**2) + &
+              !         10.d0**(-23.d0 + 0.5d0*(log10(temp) - 7.d0)))*rho/(abar*mp)**2
+              ! Just low temp part of D&P
+              sdotc = -1.d-21*exp(-0.5d0*((log10(temp) - 5.d0)/0.33d0)**2)*rho/(abar*mp)**2
 
               ! Simple radial conduction, saturated value from Cowie & McKee assuming an effective area ~ r.
               Tback = max (T0*(dist/rsc)**(-1.d0), sim_tAmbient)
               if (temp .lt. 0.5d0*Tback .and. dist .gt. softening_radius) then
-                  sdot = sdot + sim_condCoeff*0.4d0*sqrt(2.d0*kb*Tback/PI/me)*kb*Tback/mp/dist
+                  sdoth = sim_condCoeff*0.4d0*sqrt(2.d0*kb*Tback/PI/me)*kb*Tback/mp/dist
               endif
 
               ! kinetic energy
@@ -138,13 +145,14 @@ subroutine Cool(blockCount,blockList,dt, time)
 
               ! internal energy, add on nuclear rate*timestep
               !ei = solnData(ENER_VAR,i,j,k) - ek
-              ei = max(solnData(EINT_VAR,i,j,k) + dt*sdot, gr_smalle)
+              ei = max(solnData(EINT_VAR,i,j,k) + dt*(sdotc + sdoth), gr_smalle)
                 
 #ifdef EINT_VAR
               solnData(EINT_VAR,i,j,k) = ei
 #endif
               solnData(ENER_VAR,i,j,k) = ei + ek
-              solnData(ECOO_VAR,i,j,k) = sdot
+              solnData(ECOO_VAR,i,j,k) = sdotc
+              solnData(EHEA_VAR,i,j,k) = sdoth
            enddo
         enddo
      enddo
