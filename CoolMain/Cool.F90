@@ -148,7 +148,7 @@ subroutine Cool(blockCount,blockList,dt, time)
               !sdotc = -(1.d-21*exp(-0.5d0*((log10(temp) - 5.d0)/0.33d0)**2) + &
               !         10.d0**(-23.d0 + 0.5d0*(log10(temp) - 7.d0)))*rho/(abar*mp)**2
               ! Just low temp part of D&P
-              if (distp .gt. simwindNCells*mcs) then
+              if (sim_kind .ne. 'wind' .or. distp .gt. simwindNCells*mcs) then
                   sdotc = -1.d-21*exp(-0.5d0*((log10(temp) - 5.d0)/0.33d0)**2)*rho/(abar*mp)**2
                   cooledZone = .true.
               else
@@ -157,7 +157,7 @@ subroutine Cool(blockCount,blockList,dt, time)
 
               ! Simple radial conduction, saturated value from Cowie & McKee assuming an effective area ~ r.
               Tback = max (T0*(dist/rsc)**(-1.d0), sim_tAmbient)
-              if (temp .lt. 0.5d0*Tback .and. dist .gt. softening_radius) then
+              if (sim_condCoeff .gt. 0.d0 .and. temp .lt. 0.5d0*Tback .and. dist .gt. softening_radius) then
                   sdoth = sim_condCoeff*0.4d0*sqrt(2.d0*kb*Tback/PI/me)*kb*Tback/mp/dist
                   cooledZone = .true.
               else
