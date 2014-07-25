@@ -38,7 +38,7 @@ subroutine Cool(blockCount,blockList,dt, time)
   use PhysicalConstants_interface, ONLY: PhysicalConstants_get
   use Simulation_data, ONLY : sim_smallT, sim_xCenter, sim_yCenter, sim_zCenter, &
                               sim_ptMass, sim_tAmbient, obj_mu, sim_condCoeff, &
-                              sim_kind, sim_windNCells
+                              sim_kind, sim_windNCells, sim_fixedPartTag
   use RuntimeParameters_interface, ONLY : RuntimeParameters_get
   use Cool_data, ONLY : cool_useCool
   use Particles_sinkData, ONLY : localnpf, particles_global
@@ -148,7 +148,7 @@ subroutine Cool(blockCount,blockList,dt, time)
               !sdotc = -(1.d-21*exp(-0.5d0*((log10(temp) - 5.d0)/0.33d0)**2) + &
               !         10.d0**(-23.d0 + 0.5d0*(log10(temp) - 7.d0)))*rho/(abar*mp)**2
               ! Just low temp part of D&P
-              if (sim_kind .ne. 'wind' .or. distp .gt. simwindNCells*mcs) then
+              if (sim_kind .ne. 'wind' .or. distp .gt. sim_windNCells*mcs) then
                   sdotc = -1.d-21*exp(-0.5d0*((log10(temp) - 5.d0)/0.33d0)**2)*rho/(abar*mp)**2
                   cooledZone = .true.
               else
