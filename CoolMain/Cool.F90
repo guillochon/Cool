@@ -31,15 +31,17 @@ subroutine Cool(blockCount,blockList,dt, time)
 
   use Grid_interface, ONLY : Grid_fillGuardCells, &
        Grid_getBlkIndexLimits, Grid_getBlkPtr, &
-       Grid_releaseBlkPtr
+       Grid_releaseBlkPtr, Grid_getMinCellSize 
   use Eos_interface, ONLY : Eos_wrapped
   use Grid_data, ONLY : gr_smalle
   use Multispecies_interface, ONLY : Multispecies_getSumInv
   use PhysicalConstants_interface, ONLY: PhysicalConstants_get
   use Simulation_data, ONLY : sim_smallT, sim_xCenter, sim_yCenter, sim_zCenter, &
-                              sim_ptMass, sim_tAmbient, obj_mu, sim_condCoeff
+                              sim_ptMass, sim_tAmbient, obj_mu, sim_condCoeff, &
+                              sim_kind, sim_windNCells
   use RuntimeParameters_interface, ONLY : RuntimeParameters_get
   use Cool_data, ONLY : cool_useCool
+  use Particles_sinkData, ONLY : localnpf, particles_global
 
   implicit none
 
@@ -54,13 +56,15 @@ subroutine Cool(blockCount,blockList,dt, time)
 
   integer :: thisBlock, blockID, i, j, k, sizeX, sizeY, sizeZ, istat
   logical :: cooledZone
-  real :: sdotc, sdoth, sgamma, ek, ei, rho, mp, me, abar, xx, yy, zz, dist
+  real :: sdotc, sdoth, sgamma, ek, ei, rho, mp, me, abar, xx, yy, zz, dist, distp
+  real :: xxp, yyp, zzp, mcs
   real :: rsc, T0, Tback, temp, kb, newton, softening_radius
   real, pointer, dimension(:,:,:,:)            :: solnData
   integer, dimension(2,MDIM) :: blkLimits, blkLimitsGC
   double precision, dimension(SPECIES_BEGIN:SPECIES_END) :: xn
   real,allocatable,dimension(:) :: xCoord,yCoord,zCoord
   logical :: gcell = .true.
+  real, dimension(6) :: pvec
 
   if (.not. cool_useCool) return
 
@@ -68,6 +72,7 @@ subroutine Cool(blockCount,blockList,dt, time)
   call PhysicalConstants_get("electron mass", me)
   call PhysicalConstants_get("Boltzmann", kb)
   call PhysicalConstants_get("Newton", newton)
+  call Grid_getMinCellSize(mcs)
 
   call RuntimeParameters_get("sink_softening_radius", softening_radius)
 
@@ -79,11 +84,21 @@ subroutine Cool(blockCount,blockList,dt, time)
   ! make sure that guardcells are up to date
   call Grid_fillGuardCells(CENTER, ALLDIR)
 
+  if (sim_kind .eq. 'wind') then
+      call pt_sinkGatherGlobal()
+      do i = 1, localnpf
+          if (idnint(particles_global(TAG_PART_PROP,i)) .ne. sim_fixedPartTag) then
+              pvec(1:3) = particles_global(POSX_PART_PROP:POSZ_PART_PROP,i)
+              pvec(4:6) = particles_global(VELX_PART_PROP:VELZ_PART_PROP,i)
+          endif
+      enddo
+  endif
+
   ! loop over list of blocks passed in
   do thisBlock = 1, blockCount
 
      blockID = blockList(thisBlock)
-     cooledZone = .FALSE.
+     cooledZone = .false.
 
      ! get dimensions/limits and coordinates
      call Grid_getBlkIndexLimits(blockID,blkLimits,blkLimitsGC)
@@ -108,12 +123,15 @@ subroutine Cool(blockCount,blockList,dt, time)
      ! now guaranteed that tmp, rho, etc. exist
      do k = blkLimits(LOW,KAXIS), blkLimits(HIGH,KAXIS)
         zz = zCoord(k) - sim_zCenter
+        zzp = zCoord(k) - pvec(3)
         do j = blkLimits(LOW,JAXIS), blkLimits(HIGH,JAXIS)
            yy = yCoord(j) - sim_yCenter
+           yyp = yCoord(j) - pvec(2)
            do i = blkLimits(LOW,IAXIS), blkLimits(HIGH,IAXIS)
               xx = xCoord(i) - sim_xCenter
+              xxp = xCoord(i) - pvec(1)
               dist = dsqrt( xx**2 + yy**2 + zz**2 )
-              cooledZone = .true.
+              distp = dsqrt( xxp**2 + yyp**2 + zzp**2 )
 
               rho  = solnData(DENS_VAR,i,j,k)
               temp  = solnData(TEMP_VAR,i,j,k)
@@ -130,12 +148,20 @@ subroutine Cool(blockCount,blockList,dt, time)
               !sdotc = -(1.d-21*exp(-0.5d0*((log10(temp) - 5.d0)/0.33d0)**2) + &
               !         10.d0**(-23.d0 + 0.5d0*(log10(temp) - 7.d0)))*rho/(abar*mp)**2
               ! Just low temp part of D&P
-              sdotc = -1.d-21*exp(-0.5d0*((log10(temp) - 5.d0)/0.33d0)**2)*rho/(abar*mp)**2
+              if (distp .gt. simwindNCells*mcs) then
+                  sdotc = -1.d-21*exp(-0.5d0*((log10(temp) - 5.d0)/0.33d0)**2)*rho/(abar*mp)**2
+                  cooledZone = .true.
+              else
+                  sdotc = 0.d0
+              endif
 
               ! Simple radial conduction, saturated value from Cowie & McKee assuming an effective area ~ r.
               Tback = max (T0*(dist/rsc)**(-1.d0), sim_tAmbient)
               if (temp .lt. 0.5d0*Tback .and. dist .gt. softening_radius) then
                   sdoth = sim_condCoeff*0.4d0*sqrt(2.d0*kb*Tback/PI/me)*kb*Tback/mp/dist
+                  cooledZone = .true.
+              else
+                  sdoth = 0.d0
               endif
 
               ! kinetic energy
