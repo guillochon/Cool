@@ -41,6 +41,7 @@ subroutine Cool(blockCount,blockList,dt, time)
                               sim_kind, sim_windNCells, sim_fixedPartTag
   use RuntimeParameters_interface, ONLY : RuntimeParameters_get
   use Cool_data, ONLY : cool_useCool
+  use pt_sinkInterface, ONLY : pt_sinkGatherGlobal
   use Particles_sinkData, ONLY : localnpf, particles_global
 
   implicit none
